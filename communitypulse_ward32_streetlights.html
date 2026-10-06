@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CommunityPulse - Tadepalligudem Municipal Portal (తాడేపల్లిగూడెం)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet.js CSS & JS for Interactive Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        #map {
+            min-height: 480px;
+            border-radius: 1rem;
+            z-index: 10;
+        }
+        .custom-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Emergency / Urgent Alert Banner -->
+    <div id="alert-banner" class="bg-rose-700 text-white text-xs sm:text-sm py-2 px-4 flex items-center justify-between shadow-inner">
+        <div class="max-w-7xl mx-auto flex items-center space-x-3 overflow-hidden w-full">
+            <span class="bg-white text-rose-800 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full flex items-center shadow-sm flex-shrink-0 animate-pulse">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i> <span data-i18n="urgent">URGENT ALERT</span>
+            </span>
+            <div class="truncate font-medium text-rose-50" id="alert-text">
+                ⚠️ Tadepalligudem Municipal Water Pipeline Works at Subhash Road (Ward 18) until 6 PM. Drinking water tanker deployed near Jampeta Center.
+            </div>
+        </div>
+        <button onclick="dismissAlert()" class="text-rose-200 hover:text-white ml-2 flex-shrink-0">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <!-- Main Navigation Header -->
+    <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-building-columns text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-lg sm:text-xl font-bold bg-gradient-to-r from-emerald-800 to-teal-700 bg-clip-text text-transparent">Tadepalligudem Civic Portal</span>
+                    </div>
+                    <span class="hidden sm:inline-block text-[11px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200" data-i18n="tagline">తాడేపల్లిగూడెం పురపాలక సంఘం</span>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- User Karma Badge -->
+                <div class="hidden md:flex items-center space-x-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1 rounded-xl text-xs font-bold shadow-xs">
+                    <i class="fa-solid fa-award text-amber-500"></i>
+                    <span id="user-karma">95 Karma</span>
+                    <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded-md" id="user-badge-title">Tadapalligudem Hero</span>
+                </div>
+
+                <!-- Municipal Contacts Button -->
+                <button onclick="openDirectoryModal()" class="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-xl border border-sky-200 transition-all flex items-center space-x-1">
+                    <i class="fa-solid fa-phone-volume text-sky-600"></i>
+                    <span class="hidden sm:inline" data-i18n="directoryBtn">Helplines</span>
+                </button>
+
+                <!-- Language Switcher Button -->
+                <button onclick="toggleLanguage()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all border border-slate-200 flex items-center space-x-1">
+                    <i class="fa-solid fa-globe text-slate-500"></i>
+                    <span id="lang-btn-text">తెలుగు</span>
+                </button>
+
+                <!-- Report Button -->
+                <button onclick="openModal()" class="inline-flex items-center justify-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs sm:text-sm rounded-xl shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                    <i class="fa-solid fa-plus mr-1.5"></i>
+                    <span data-i18n="reportBtn">Report Issue</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Banner with Local Tadepalligudem Focus -->
+    <section class="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        <div class="max-w-7xl mx-auto relative z-10">
+            <div class="text-center max-w-3xl mx-auto mb-8">
+                <span class="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold tracking-wide uppercase mb-3 border border-emerald-500/30" data-i18n="heroBadge">
+                    West Godavari District • Wards 1 to 35
+                </span>
+                <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight" data-i18n="heroTitle">
+                    Tadepalligudem Ward Secretariat & Civic Issue Resolution
+                </h1>
+                <p class="mt-3 text-xs sm:text-base text-slate-300" data-i18n="heroSub">
+                    Report municipal issues across Wards 1 to 35 (Station Road, Subhash Road, Jampeta, K.N. Road, Housing Board & NIT AP Campus). Track resolution directly with Ward Secretariats (వార్డు సచివాలయాలు).
+                </p>
+            </div>
+
+            <!-- Municipal Stats Bar -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 text-center border border-white/10 shadow-lg">
+                    <p id="stat-total" class="text-2xl sm:text-3xl font-extrabold text-emerald-400">0</p>
+                    <p class="text-xs sm:text-sm text-slate-300 font-medium" data-i18n="statReported">Issues Reported</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 text-center border border-white/10 shadow-lg">
+                    <p id="stat-resolved" class="text-2xl sm:text-3xl font-extrabold text-teal-300">0</p>
+                    <p class="text-xs sm:text-sm text-slate-300 font-medium" data-i18n="statResolved">Ward Resolved</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 text-center border border-white/10 shadow-lg">
+                    <p id="stat-upvotes" class="text-2xl sm:text-3xl font-extrabold text-amber-300">0</p>
+                    <p class="text-xs sm:text-sm text-slate-300 font-medium" data-i18n="statUpvotes">Citizen Backing</p>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 text-center border border-white/10 shadow-lg">
+                    <p id="stat-volunteers" class="text-2xl sm:text-3xl font-extrabold text-sky-300">0</p>
+                    <p class="text-xs sm:text-sm text-slate-300 font-medium" data-i18n="statVolunteers">Active Volunteers</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Application Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            
+            <!-- Left Sidebar Controls -->
+            <aside class="lg:col-span-1 space-y-6">
+                <!-- Search Box -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2" data-i18n="searchTitle">Search Issues</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-input" oninput="renderIssues()" placeholder="Search street, ward, or problem..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                    </div>
+                </div>
+
+                <!-- Municipal Ward Dropdown Filter (Wards 1 - 35) -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span data-i18n="wardFilterTitle">Filter by Ward</span>
+                        <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">35 Wards</span>
+                    </label>
+                    <select id="ward-filter" onchange="renderIssues()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                        <option value="All" data-i18n="allWardsOption">All Wards (1 - 35)</option>
+                        <!-- Dynamic Options 1 - 35 populated via JS -->
+                    </select>
+                </div>
+
+                <!-- Category Filters Panel -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+                    <div>
+                        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3" data-i18n="catTitle">Category Filter</h3>
+                        <div class="flex flex-wrap lg:flex-col gap-1.5" id="category-filters">
+                            <button onclick="setCategoryFilter('All')" class="cat-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all bg-emerald-50 text-emerald-700 font-semibold" data-cat="All">
+                                <i class="fa-solid fa-layer-group w-5 text-center mr-1.5"></i><span data-i18n="catAll">All Categories</span>
+                            </button>
+                            <button onclick="setCategoryFilter('Infrastructure')" class="cat-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-cat="Infrastructure">
+                                <i class="fa-solid fa-road w-5 text-center mr-1.5"></i><span data-i18n="catInfra">Roads & Lights</span>
+                            </button>
+                            <button onclick="setCategoryFilter('Safety')" class="cat-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-cat="Safety">
+                                <i class="fa-solid fa-shield-halved w-5 text-center mr-1.5"></i><span data-i18n="catSafety">Public Safety</span>
+                            </button>
+                            <button onclick="setCategoryFilter('Environment')" class="cat-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-cat="Environment">
+                                <i class="fa-solid fa-tree w-5 text-center mr-1.5"></i><span data-i18n="catEnv">Parks & Greenery</span>
+                            </button>
+                            <button onclick="setCategoryFilter('Sanitation')" class="cat-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-cat="Sanitation">
+                                <i class="fa-solid fa-trash-can w-5 text-center mr-1.5"></i><span data-i18n="catSanitation">Drains & Waste</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100">
+
+                    <div>
+                        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3" data-i18n="statusTitle">Status Filter</h3>
+                        <div class="flex flex-wrap lg:flex-col gap-1.5" id="status-filters">
+                            <button onclick="setStatusFilter('All')" class="status-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all bg-emerald-50 text-emerald-700 font-semibold" data-status="All" data-i18n="statusAll">
+                                All Statuses
+                            </button>
+                            <button onclick="setStatusFilter('Open')" class="status-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-status="Open">
+                                <span class="w-2 h-2 rounded-full inline-block bg-amber-500 mr-2"></span><span data-i18n="statusOpen">Open Report</span>
+                            </button>
+                            <button onclick="setStatusFilter('In Progress')" class="status-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-status="In Progress">
+                                <span class="w-2 h-2 rounded-full inline-block bg-blue-500 mr-2"></span><span data-i18n="statusProgress">Secretariat Repairing</span>
+                            </button>
+                            <button onclick="setStatusFilter('Community Action')" class="status-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-status="Community Action">
+                                <span class="w-2 h-2 rounded-full inline-block bg-purple-500 mr-2"></span><span data-i18n="statusAction">Citizen Squad</span>
+                            </button>
+                            <button onclick="setStatusFilter('Resolved')" class="status-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100" data-status="Resolved">
+                                <span class="w-2 h-2 rounded-full inline-block bg-emerald-500 mr-2"></span><span data-i18n="statusResolved">Resolved</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Community Champions Leaderboard -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xs font-bold text-slate-800 flex items-center uppercase tracking-wider">
+                            <i class="fa-solid fa-trophy text-amber-500 mr-2"></i><span data-i18n="leaderboardTitle">Gudem Champions</span>
+                        </h3>
+                        <span class="text-[10px] text-slate-400">Ward Leaders</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="relative">
+                                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100" class="w-8 h-8 rounded-full object-cover">
+                                    <span class="absolute -bottom-1 -right-1 bg-amber-400 text-slate-900 text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white">1</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">Srilatha Rao</p>
+                                    <p class="text-[10px] text-slate-500">Ward 18 (Subhash Rd)</p>
+                                </div>
+                            </div>
+                            <span class="text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-lg">165 pts</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="relative">
+                                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100" class="w-8 h-8 rounded-full object-cover">
+                                    <span class="absolute -bottom-1 -right-1 bg-slate-300 text-slate-900 text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center border border-white">2</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">Venkata Ramana</p>
+                                    <p class="text-[10px] text-slate-500">Ward 12 (Jampeta)</p>
+                                </div>
+                            </div>
+                            <span class="text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-lg">130 pts</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <section class="lg:col-span-3 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900" id="feed-title">Tadepalligudem Municipal Reports</h2>
+                        <p class="text-xs text-slate-500" id="feed-subtitle">Showing all ward reports</p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <!-- View Toggle (Grid / Map) -->
+                        <div class="bg-slate-200/80 p-1 rounded-xl flex items-center space-x-1">
+                            <button id="view-grid-btn" onclick="setViewMode('grid')" class="px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs bg-white text-slate-900 transition-all flex items-center space-x-1">
+                                <i class="fa-solid fa-list-ul"></i>
+                                <span data-i18n="viewGrid">Feed</span>
+                            </button>
+                            <button id="view-map-btn" onclick="setViewMode('map')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1">
+                                <i class="fa-solid fa-map-location-dot"></i>
+                                <span data-i18n="viewMap">Map View</span>
+                            </button>
+                        </div>
+
+                        <!-- Sort Dropdown -->
+                        <select id="sort-select" onchange="renderIssues()" class="bg-white border border-slate-200 text-xs font-medium rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="newest" data-i18n="sortNewest">Newest First</option>
+                            <option value="upvotes" data-i18n="sortUpvotes">Most Supported</option>
+                            <option value="volunteers" data-i18n="sortVolunteers">Volunteer Squads</option>
+                            <option value="severity" data-i18n="sortSeverity">Highest Priority</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Interactive Leaflet Map Container -->
+                <div id="map-container" class="hidden bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative">
+                    <div id="map"></div>
+                    <div class="mt-2 text-xs text-slate-500 flex items-center justify-between px-2">
+                        <span><i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i> Map Pins show issues across Wards 1 to 35 in Tadepalligudem. Click pins for Ward Secretariat details.</span>
+                        <span class="font-semibold text-slate-700">Tadepalligudem Town View</span>
+                    </div>
+                </div>
+
+                <!-- Dynamic Issues Feed Container -->
+                <div id="issues-container" class="space-y-4">
+                    <!-- Issue Cards render dynamically -->
+                </div>
+
+                <!-- Empty Filter State -->
+                <div id="empty-state" class="hidden bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
+                    <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-800">No reports found for this Ward filter</h3>
+                    <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">Try changing the ward number, category filter, or query search.</p>
+                    <button onclick="resetFilters()" class="mt-4 inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all">
+                        Reset Ward Filters
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Interactive Modal: Report Municipal Issue -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div id="modal-container" class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300 max-h-[90vh] flex flex-col">
+            
+            <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-building-flag text-emerald-400"></i>
+                    <h3 class="font-bold text-base sm:text-lg" data-i18n="reportModalTitle">Report Issue to Ward Secretariat</h3>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition-colors w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="report-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-grow">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Municipal Ward Selection (1 - 35) -->
+                    <div class="sm:col-span-1">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" data-i18n="fieldWard">Ward Number *</label>
+                        <select id="input-ward" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                            <!-- Options 1 to 35 dynamically populated -->
+                        </select>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="sm:col-span-1">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" data-i18n="fieldCategory">Category *</label>
+                        <select id="input-category" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                            <option value="Infrastructure">Infrastructure & Roads</option>
+                            <option value="Safety">Public Safety & Lighting</option>
+                            <option value="Environment">Parks & Environment</option>
+                            <option value="Sanitation">Sanitation & Drains</option>
+                        </select>
+                    </div>
+
+                    <!-- Severity -->
+                    <div class="sm:col-span-1">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" data-i18n="fieldSeverity">Priority *</label>
+                        <select id="input-severity" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                            <option value="Low">Low Priority</option>
+                            <option value="Medium" selected>Medium Priority</option>
+                            <option value="High">High / Urgent</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" data-i18n="fieldTitle">Issue Title *</label>
+                    <input type="text" id="input-title" required placeholder="e.g., Open Drain near Subhash Road Center" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" data-i18n="fieldLocation">Landmark Address (Tadepalligudem) *</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-location-dot absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="input-location" required placeholder="e.g., Near Municipal School, Jampeta, Tadepalligudem" class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" data-i18n="fieldDesc">Detailed Description *</label>
+                    <textarea id="input-description" rows="3" required placeholder="Explain the problem clearly for the Ward Secretariat..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all resize-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Attach Photo (Optional)</label>
+                    <div class="mt-1 flex justify-center px-6 pt-4 pb-4 border-2 border-slate-200 border-dashed rounded-xl hover:border-emerald-500 transition-colors cursor-pointer bg-slate-50 relative" onclick="document.getElementById('input-image').click()">
+                        <div class="space-y-1 text-center" id="upload-prompt">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400"></i>
+                            <div class="text-xs text-slate-600">
+                                <span class="font-semibold text-emerald-600">Click to upload photo</span>
+                            </div>
+                        </div>
+                        <img id="image-preview" class="hidden max-h-36 rounded-lg object-contain mx-auto">
+                        <input id="input-image" type="file" accept="image/*" class="hidden" onchange="previewImage(event)">
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span data-i18n="submitReport">Submit to Secretariat</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Municipal Helplines Modal -->
+    <div id="directory-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div id="directory-container" class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300 max-h-[90vh] flex flex-col">
+            <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-phone-volume text-sky-400"></i>
+                    <h3 class="font-bold text-base" data-i18n="directoryModalTitle">Tadepalligudem Municipal Helplines</h3>
+                </div>
+                <button onclick="closeDirectoryModal()" class="text-slate-400 hover:text-white w-8 h-8 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-3 overflow-y-auto custom-scrollbar">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">Tadepalligudem Municipal Commissioner</p>
+                        <p class="text-[10px] text-slate-500">Town Hall, KN Road</p>
+                    </div>
+                    <a href="tel:08818222123" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700"><i class="fa-solid fa-phone mr-1"></i>08818-222123</a>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">Water Works & Public Health Dept</p>
+                        <p class="text-[10px] text-slate-500">Sanitation & Pipeline Complaints</p>
+                    </div>
+                    <a href="tel:08818223456" class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700"><i class="fa-solid fa-phone mr-1"></i>08818-223456</a>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">APEPDCL Power Supply Office</p>
+                        <p class="text-[10px] text-slate-500">Operation Division Tadepalligudem</p>
+                    </div>
+                    <a href="tel:1912" class="px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700"><i class="fa-solid fa-bolt mr-1"></i>1912</a>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">Town Police Station (Tadepalligudem)</p>
+                        <p class="text-[10px] text-slate-500">Railway Station Road Center</p>
+                    </div>
+                    <a href="tel:100" class="px-3 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700"><i class="fa-solid fa-shield mr-1"></i>100 / 112</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Modal: Ward Issue Discussion Thread -->
+    <div id="details-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4">
+        <div id="details-container" class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300 max-h-[90vh] flex flex-col">
+            
+            <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-comments text-emerald-400"></i>
+                    <h3 class="font-bold text-base sm:text-lg" id="details-modal-title">Ward Discussion & Secretariat Notes</h3>
+                </div>
+                <button onclick="closeDetailsModal()" class="text-slate-400 hover:text-white transition-colors w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-grow">
+                <!-- Detailed Issue Summary Header -->
+                <div id="details-header-card" class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <!-- Dynamic Header Content -->
+                </div>
+
+                <!-- Discussion Comments List -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-800 mb-3 flex items-center uppercase tracking-wider">
+                        <i class="fa-solid fa-users-rectangle text-slate-500 mr-2"></i>
+                        <span>Ward Resident & Secretariat Updates</span>
+                        <span id="comment-count-badge" class="ml-2 bg-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                    </h4>
+
+                    <div id="comments-list" class="space-y-3 max-h-56 overflow-y-auto pr-1">
+                        <!-- Comments inserted dynamically -->
+                    </div>
+                </div>
+
+                <!-- Add Comment Form -->
+                <form onsubmit="handleAddComment(event)" class="space-y-2 pt-2 border-t border-slate-200">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Post an Update or Ward Suggestion</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="comment-input" required placeholder="Write a note or suggest a solution..." class="flex-grow px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+                        <button type="submit" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center space-x-1">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Post</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message" class="text-xs sm:text-sm font-medium">Notification message</span>
+    </div>
+
+    <script>
+        // Multilingual Dictionary for English and Telugu (West Godavari Context)
+        const i18nData = {
+            en: {
+                urgent: "URGENT ALERT",
+                tagline: "తాడేపల్లిగూడెం పురపాలక సంఘం",
+                reportBtn: "Report Issue",
+                directoryBtn: "Helplines",
+                heroBadge: "West Godavari District • Wards 1 to 35",
+                heroTitle: "Tadepalligudem Ward Secretariat & Civic Issue Resolution",
+                heroSub: "Report municipal issues across Wards 1 to 35 (Station Road, Subhash Road, Jampeta, K.N. Road, Housing Board & NIT AP Campus). Track resolution directly with Ward Secretariats (వార్డు సచివాలయాలు).",
+                statReported: "Issues Reported",
+                statResolved: "Ward Resolved",
+                statUpvotes: "Citizen Backing",
+                statVolunteers: "Active Volunteers",
+                searchTitle: "Search Issues",
+                wardFilterTitle: "Filter by Ward",
+                allWardsOption: "All Wards (1 - 35)",
+                catTitle: "Category Filter",
+                catAll: "All Categories",
+                catInfra: "Roads & Lights",
+                catSafety: "Public Safety",
+                catEnv: "Parks & Greenery",
+                catSanitation: "Drains & Waste",
+                statusTitle: "Status Filter",
+                statusAll: "All Statuses",
+                statusOpen: "Open Report",
+                statusProgress: "Secretariat Repairing",
+                statusAction: "Citizen Squad",
+                statusResolved: "Resolved",
+                leaderboardTitle: "Gudem Champions",
+                viewGrid: "Feed",
+                viewMap: "Map View",
+                sortNewest: "Newest First",
+                sortUpvotes: "Most Supported",
+                sortVolunteers: "Volunteer Squads",
+                sortSeverity: "Highest Priority",
+                reportModalTitle: "Report Issue to Ward Secretariat",
+                directoryModalTitle: "Tadepalligudem Municipal Helplines",
+                fieldWard: "Ward Number *",
+                fieldCategory: "Category *",
+                fieldSeverity: "Priority *",
+                fieldTitle: "Issue Title *",
+                fieldLocation: "Landmark Address (Tadepalligudem) *",
+                fieldDesc: "Detailed Description *",
+                submitReport: "Submit to Secretariat"
+            },
+            te: {
+                urgent: "అత్యవసర ప్రకటన",
+                tagline: "తాడేపల్లిగూడెం పురపాలక వర్గం",
+                reportBtn: "సమస్య నమోదు",
+                directoryBtn: "హెల్ప్‌లైన్లు",
+                heroBadge: "పశ్చిమ గోదావరి జిల్లా • వార్డులు 1 నుండి 35",
+                heroTitle: "తాడేపల్లిగూడెం వార్డు సచివాలయం సివిక్ సమస్యల పరిష్కారం",
+                heroSub: "తాడేపల్లిగూడెంలోని 1 నుండి 35 వార్డుల పరిధిలో (రైల్వే స్టేషన్ రోడ్, సుభాష్ రోడ్, జాం పేట, కె.ఎన్. రోడ్, హౌసింగ్ బోర్డు & నిట్ ఏపీ) సమస్యలను నమోదు చేయండి. వార్డు సచివాలయాల ద్వారా పరిష్కరించుకోండి.",
+                statReported: "నమోదైన ఫిర్యాదులు",
+                statResolved: "పరిష్కరించినవి",
+                statUpvotes: "ప్రజా మద్దతు",
+                statVolunteers: "వాలంటీర్లు",
+                searchTitle: "సమస్యలను వెతకండి",
+                wardFilterTitle: "వార్డు ప్రకారం ఫిల్టర్",
+                allWardsOption: "అన్ని వార్డులు (1 - 35)",
+                catTitle: "విభాగం ఫిల్టర్",
+                catAll: "అన్ని రకాలు",
+                catInfra: "రోడ్లు & వీధి దీపాలు",
+                catSafety: "ప్రజా రక్షణ",
+                catEnv: "పార్కులు & పర్యావరణం",
+                catSanitation: "కాలువలు & డ్రైనేజీ",
+                statusTitle: "స్థితి ఫిల్టర్",
+                statusAll: "అన్ని స్థితులు",
+                statusOpen: "నమోదైనవి",
+                statusProgress: "సచివాలయ పరిశీలన",
+                statusAction: "సిటిజన్ వాలంటీర్లు",
+                statusResolved: "పరిష్కరించబడినవి",
+                leaderboardTitle: "గూడెం నాయకులు",
+                viewGrid: "జాబితా",
+                viewMap: "మ్యాప్ వీక్షణ",
+                sortNewest: "తాజావి మొదటిగా",
+                sortUpvotes: "ఎక్కువ మద్దతు",
+                sortVolunteers: "వాలంటీర్ల సేవలు",
+                sortSeverity: "అత్యవసర ప్రాధాన్యత",
+                reportModalTitle: "వార్డు సచివాలయానికి ఫిర్యాదు",
+                directoryModalTitle: "తాడేపల్లిగూడెం పురపాలక అత్యవసర నంబర్లు",
+                fieldWard: "వార్డు నెంబరు *",
+                fieldCategory: "విభాగం *",
+                fieldSeverity: "ప్రాధాన్యత *",
+                fieldTitle: "సమస్య పేరు *",
+                fieldLocation: "విలాసం / ల్యాండ్‌మార్క్ (తాడేపల్లిగూడెం) *",
+                fieldDesc: "పూర్తి వివరాలు *",
+                submitReport: "సచివాలయానికి సమర్పించు"
+            }
+        };
+
+        // Real Tadepalligudem Sample Issues across Wards 1 to 35
+        const defaultIssues = [
+            {
+                id: 'tpdg-1',
+                ward: 18,
+                secretariatId: 'TPDG-SEC-18',
+                officer: 'Ward Admin Officer - Ward 18',
+                title: 'Open Drain Overflow Near Subhash Road Commercial Center',
+                category: 'Sanitation',
+                severity: 'High',
+                location: 'Subhash Road, Near Weekly Market, Ward 18, Tadepalligudem',
+                lat: 16.8180,
+                lng: 81.5290,
+                description: 'Desilting is urgently required for the main roadside masonry drain. Stormwater is overflowing onto the main shopping road.',
+                status: 'Open',
+                upvotes: 42,
+                volunteers: 4,
+                hasUpvoted: false,
+                isVolunteered: false,
+                image: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=600',
+                createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+                author: 'Ramesh Babu (Resident)',
+                comments: [
+                    { author: 'Ward 18 Secretariat', text: 'Sanitation inspector notified for site check on Tuesday morning.', time: '1 day ago' }
+                ]
+            },
+            {
+                id: 'tpdg-2',
+                ward: 32,
+                secretariatId: 'TPDG-SEC-32',
+                officer: 'Ward Admin Officer - Ward 32',
+                title: 'No Street Lights on Kadakatla Road',
+                category: 'Safety',
+                severity: 'High',
+                location: 'Kadakatla Road, Near NIT AP Main Entrance, Ward 32, Tadepalligudem',
+                lat: 16.8285,
+                lng: 81.5312,
+                description: 'Street lights are not available on this stretch of Ward 32, leaving the road poorly lit after sunset and creating difficulty for evening commuters and students.',
+                status: 'Open',
+                upvotes: 68,
+                volunteers: 0,
+                hasUpvoted: false,
+                isVolunteered: false,
+                image: 'https://images.tribuneindia.com/cms/gall_content/2018/1/2018_1%24largeimg03_Wednesday_2018_012135446.jpg',
+                createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+                author: 'K. Sai Krishna',
+                comments: [
+                    { author: 'Electrical Supervisor', text: 'New LED choke replacement requested from Municipal Stores.', time: '12 hours ago' }
+                ]
+            },
+            {
+                id: 'tpdg-3',
+                ward: 1,
+                secretariatId: 'TPDG-SEC-01',
+                officer: 'Ward Admin Officer - Ward 01',
+                title: 'Potholes Patchwork Needed at Railway Station Road Junction',
+                category: 'Infrastructure',
+                severity: 'High',
+                location: 'Railway Station Road, Ward 01, Tadepalligudem',
+                lat: 16.8150,
+                lng: 81.5260,
+                description: 'Heavy vehicular traffic near the railway station entrance has caused deep asphalt erosion. Needs quick gravel filling.',
+                status: 'Open',
+                upvotes: 51,
+                volunteers: 8,
+                hasUpvoted: false,
+                isVolunteered: false,
+                image: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=600',
+                createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+                author: 'M. V. Rao',
+                comments: []
+            },
+            {
+                id: 'tpdg-4',
+                ward: 25,
+                secretariatId: 'TPDG-SEC-25',
+                officer: 'Ward Admin Officer - Ward 25',
+                title: 'Community Tree Plantation & Park Bench Maintenance',
+                category: 'Environment',
+                severity: 'Low',
+                location: 'Housing Board Colony Park, Ward 25, Tadepalligudem',
+                lat: 16.8080,
+                lng: 81.5350,
+                description: 'Organizing a Sunday morning volunteer group to plant 20 shade saplings and paint broken walking path benches.',
+                status: 'Community Action',
+                upvotes: 35,
+                volunteers: 12,
+                hasUpvoted: false,
+                isVolunteered: false,
+                image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=600',
+                createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+                author: 'Srilatha Rao',
+                comments: [
+                    { author: 'Youth Club TPDG', text: 'We will bring watering cans and sapling guards.', time: '2 days ago' }
+                ]
+            }
+        ];
+
+        let issues = [];
+        let activeCategory = 'All';
+        let activeStatus = 'All';
+        let currentImageData = null;
+        let viewMode = 'grid';
+        let leafletMap = null;
+        let mapMarkers = [];
+        let currentLanguage = 'en';
+        let currentDetailIssueId = null;
+        let userKarma = 95;
+
+        function initApp() {
+            populateWardDropdowns();
+
+            const savedIssues = localStorage.getItem('tpdg_community_issues_v3');
+            const savedKarma = localStorage.getItem('tpdg_community_karma');
+
+            if (savedKarma) userKarma = parseInt(savedKarma);
+
+            if (savedIssues) {
+                try {
+                    issues = JSON.parse(savedIssues);
+                } catch(e) {
+                    issues = [...defaultIssues];
+                }
+            } else {
+                issues = [...defaultIssues];
+                saveToLocalStorage();
+            }
+
+            updateKarmaDisplay();
+            updateStats();
+            renderIssues();
+        }
+
+        function populateWardDropdowns() {
+            const wardFilter = document.getElementById('ward-filter');
+            const inputWard = document.getElementById('input-ward');
+
+            // Populate Wards 1 to 35
+            for (let i = 1; i <= 35; i++) {
+                const optFilter = document.createElement('option');
+                optFilter.value = i;
+                optFilter.textContent = `Ward ${i}`;
+                wardFilter.appendChild(optFilter);
+
+                const optInput = document.createElement('option');
+                optInput.value = i;
+                optInput.textContent = `Ward ${i}`;
+                if (i === 18) optInput.selected = true;
+                inputWard.appendChild(optInput);
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('tpdg_community_issues_v3', JSON.stringify(issues));
+            localStorage.setItem('tpdg_community_karma', userKarma.toString());
+        }
+
+        function updateKarmaDisplay() {
+            document.getElementById('user-karma').textContent = `${userKarma} Karma`;
+            let badge = "Gudem Resident";
+            if (userKarma >= 100) badge = "Tadapalligudem Hero";
+            else if (userKarma >= 75) badge = "Civic Champion";
+            else if (userKarma >= 50) badge = "Ward Volunteer";
+            document.getElementById('user-badge-title').textContent = badge;
+        }
+
+        function addKarma(amount) {
+            userKarma += amount;
+            updateKarmaDisplay();
+            saveToLocalStorage();
+        }
+
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'en' ? 'te' : 'en';
+            document.getElementById('lang-btn-text').textContent = currentLanguage === 'en' ? 'తెలుగు' : 'English';
+            applyTranslations();
+            renderIssues();
+        }
+
+        function applyTranslations() {
+            const dictionary = i18nData[currentLanguage];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dictionary[key]) {
+                    el.textContent = dictionary[key];
+                }
+            });
+        }
+
+        function dismissAlert() {
+            document.getElementById('alert-banner').style.display = 'none';
+        }
+
+        function updateStats() {
+            const total = issues.length;
+            const resolved = issues.filter(i => i.status === 'Resolved').length;
+            const totalUpvotes = issues.reduce((acc, curr) => acc + curr.upvotes, 0);
+            const totalVolunteers = issues.reduce((acc, curr) => acc + curr.volunteers, 0);
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-resolved').textContent = resolved;
+            document.getElementById('stat-upvotes').textContent = totalUpvotes;
+            document.getElementById('stat-volunteers').textContent = totalVolunteers;
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            const gridBtn = document.getElementById('view-grid-btn');
+            const mapBtn = document.getElementById('view-map-btn');
+            const issuesContainer = document.getElementById('issues-container');
+            const mapContainer = document.getElementById('map-container');
+
+            if (mode === 'map') {
+                gridBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1";
+                mapBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs bg-white text-slate-900 transition-all flex items-center space-x-1";
+                issuesContainer.classList.add('hidden');
+                mapContainer.classList.remove('hidden');
+                initOrUpdateMap();
+            } else {
+                mapBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition-all flex items-center space-x-1";
+                gridBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs bg-white text-slate-900 transition-all flex items-center space-x-1";
+                mapContainer.classList.add('hidden');
+                issuesContainer.classList.remove('hidden');
+            }
+        }
+
+        function initOrUpdateMap() {
+            if (!leafletMap) {
+                // Centered on Tadepalligudem Town Center
+                leafletMap = L.map('map').setView([16.8150, 81.5260], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(leafletMap);
+            }
+
+            mapMarkers.forEach(marker => leafletMap.removeLayer(marker));
+            mapMarkers = [];
+
+            const filtered = getFilteredIssues();
+
+            filtered.forEach(issue => {
+                const lat = issue.lat || 16.8150;
+                const lng = issue.lng || 81.5260;
+
+                let markerColor = '#f59e0b'; // Medium Priority
+                if (issue.severity === 'High') markerColor = '#e11d48';
+                if (issue.status === 'Resolved') markerColor = '#10b981';
+
+                const customIcon = L.divIcon({
+                    className: 'custom-pin',
+                    html: `<div style="background-color: ${markerColor}; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                });
+
+                const marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
+                
+                const popupContent = `
+                    <div style="font-family: Inter, sans-serif; padding: 2px;">
+                        <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: ${markerColor};">Ward ${issue.ward} • ${issue.category}</span>
+                        <h4 style="font-size: 12px; font-weight: bold; margin: 2px 0;">${issue.title}</h4>
+                        <p style="font-size: 10px; color: #475569; margin-bottom: 6px;">${issue.location}</p>
+                        <button onclick="openDetailsModal('${issue.id}')" style="background-color: #059669; color: white; border: none; padding: 4px 8px; border-radius: 6px; font-size: 10px; cursor: pointer; font-weight: bold; width: 100%;">
+                            View Discussion (${issue.comments ? issue.comments.length : 0})
+                        </button>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                mapMarkers.push(marker);
+            });
+        }
+
+        function setCategoryFilter(cat) {
+            activeCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.className = "cat-btn text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700";
+                } else {
+                    btn.className = "cat-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100";
+                }
+            });
+            renderIssues();
+        }
+
+        function setStatusFilter(status) {
+            activeStatus = status;
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                if (btn.dataset.status === status) {
+                    btn.className = "status-btn text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all bg-emerald-50 text-emerald-700";
+                } else {
+                    btn.className = "status-btn text-left px-3 py-2 rounded-xl text-xs font-medium transition-all text-slate-600 hover:bg-slate-100";
+                }
+            });
+            renderIssues();
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('ward-filter').value = 'All';
+            setCategoryFilter('All');
+            setStatusFilter('All');
+        }
+
+        function getFilteredIssues() {
+            const searchQuery = (document.getElementById('search-input').value || '').toLowerCase();
+            const wardVal = document.getElementById('ward-filter').value;
+            const sortVal = document.getElementById('sort-select').value;
+
+            let filtered = issues.filter(issue => {
+                const matchCategory = activeCategory === 'All' || issue.category === activeCategory;
+                const matchStatus = activeStatus === 'All' || issue.status === activeStatus;
+                const matchWard = wardVal === 'All' || issue.ward.toString() === wardVal;
+                const matchSearch = issue.title.toLowerCase().includes(searchQuery) || 
+                                    issue.location.toLowerCase().includes(searchQuery) ||
+                                    issue.description.toLowerCase().includes(searchQuery) ||
+                                    `ward ${issue.ward}`.includes(searchQuery);
+
+                return matchCategory && matchStatus && matchWard && matchSearch;
+            });
+
+            // Sorting
+            if (sortVal === 'newest') {
+                filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            } else if (sortVal === 'upvotes') {
+                filtered.sort((a, b) => b.upvotes - a.upvotes);
+            } else if (sortVal === 'volunteers') {
+                filtered.sort((a, b) => b.volunteers - a.volunteers);
+            } else if (sortVal === 'severity') {
+                const severityRank = { 'High': 3, 'Medium': 2, 'Low': 1 };
+                filtered.sort((a, b) => severityRank[b.severity] - severityRank[a.severity]);
+            }
+
+            return filtered;
+        }
+
+        function renderIssues() {
+            const container = document.getElementById('issues-container');
+            const emptyState = document.getElementById('empty-state');
+            const filtered = getFilteredIssues();
+
+            if (viewMode === 'map') {
+                initOrUpdateMap();
+            }
+
+            const wardVal = document.getElementById('ward-filter').value;
+            const wardText = wardVal === 'All' ? 'All Wards' : `Ward ${wardVal}`;
+            document.getElementById('feed-title').textContent = `${wardText} Tadepalligudem Reports`;
+            document.getElementById('feed-subtitle').textContent = `Showing ${filtered.length} report${filtered.length === 1 ? '' : 's'}`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            container.innerHTML = filtered.map(issue => createIssueCardHTML(issue)).join('');
+        }
+
+        function createIssueCardHTML(issue) {
+            let statusBadgeClass = "bg-amber-100 text-amber-800 border-amber-200";
+            let statusDot = "bg-amber-500";
+            if (issue.status === 'In Progress') {
+                statusBadgeClass = "bg-blue-100 text-blue-800 border-blue-200";
+                statusDot = "bg-blue-500";
+            } else if (issue.status === 'Community Action') {
+                statusBadgeClass = "bg-purple-100 text-purple-800 border-purple-200";
+                statusDot = "bg-purple-500";
+            } else if (issue.status === 'Resolved') {
+                statusBadgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                statusDot = "bg-emerald-500";
+            }
+
+            let catIcon = "fa-layer-group";
+            if (issue.category === 'Infrastructure') catIcon = "fa-road";
+            if (issue.category === 'Safety') catIcon = "fa-shield-halved";
+            if (issue.category === 'Environment') catIcon = "fa-tree";
+            if (issue.category === 'Sanitation') catIcon = "fa-trash-can";
+
+            let severityColor = "bg-slate-100 text-slate-700";
+            if (issue.severity === 'High') severityColor = "bg-rose-100 text-rose-700 font-semibold";
+            if (issue.severity === 'Medium') severityColor = "bg-amber-100 text-amber-700";
+
+            const formattedDate = new Date(issue.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const commentCount = issue.comments ? issue.comments.length : 0;
+
+            return `
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col md:flex-row">
+                    ${issue.image ? `
+                        <div class="md:w-52 h-44 md:h-auto bg-slate-100 relative flex-shrink-0 cursor-pointer" onclick="openDetailsModal('${issue.id}')">
+                            <img src="${issue.image}" class="w-full h-full object-cover" alt="${issue.title}" onerror="this.src='https://placehold.co/600x400/e2e8f0/64748b?text=Tadepalligudem+Ward'">
+                            <span class="absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md text-emerald-300 shadow-sm">
+                                Ward ${issue.ward}
+                            </span>
+                        </div>
+                    ` : ''}
+
+                    <div class="p-5 flex-grow flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                <div class="flex items-center space-x-2">
+                                    <span class="inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${statusBadgeClass}">
+                                        <span class="w-1.5 h-1.5 rounded-full ${statusDot} mr-1.5"></span>${issue.status}
+                                    </span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full ${severityColor}">
+                                        ${issue.severity} Priority
+                                    </span>
+                                    <span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-md border border-slate-200">
+                                        <i class="fa-solid ${catIcon} mr-1"></i>${issue.category}
+                                    </span>
+                                </div>
+                                <span class="text-[11px] text-slate-400">
+                                    <i class="fa-regular fa-clock mr-1"></i>${formattedDate}
+                                </span>
+                            </div>
+
+                            <h3 onclick="openDetailsModal('${issue.id}')" class="text-base font-bold text-slate-900 leading-snug hover:text-emerald-600 transition-colors cursor-pointer">
+                                ${issue.title}
+                            </h3>
+
+                            <p class="text-xs text-emerald-700 font-medium mt-1 flex items-center">
+                                <i class="fa-solid fa-location-dot mr-1.5"></i>${issue.location}
+                            </p>
+
+                            <p class="text-xs text-slate-600 mt-2 line-clamp-2">
+                                ${issue.description}
+                            </p>
+                        </div>
+
+                        <!-- Card Footer Controls -->
+                        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center space-x-2">
+                                <button onclick="toggleUpvote('${issue.id}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${issue.hasUpvoted ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
+                                    <i class="fa-solid fa-thumbs-up"></i>
+                                    <span>${issue.hasUpvoted ? 'Supported' : 'Support Issue'}</span>
+                                    <span class="ml-1 px-1.5 py-0.2 rounded-md ${issue.hasUpvoted ? 'bg-emerald-700 text-white' : 'bg-white text-slate-800'} text-[10px]">${issue.upvotes}</span>
+                                </button>
+
+                                <button onclick="toggleVolunteer('${issue.id}')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${issue.isVolunteered ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 hover:bg-purple-100 text-purple-700'}">
+                                    <i class="fa-solid fa-hand-holding-heart"></i>
+                                    <span>${issue.isVolunteered ? 'Joined Squad' : 'Volunteer'}</span>
+                                    <span class="ml-1 px-1.5 py-0.2 rounded-md ${issue.isVolunteered ? 'bg-purple-700 text-white' : 'bg-white text-purple-800'} text-[10px]">${issue.volunteers}</span>
+                                </button>
+                            </div>
+
+                            <button onclick="openDetailsModal('${issue.id}')" class="text-xs font-semibold text-slate-500 hover:text-emerald-600 flex items-center space-x-1">
+                                <i class="fa-solid fa-comments text-slate-400"></i>
+                                <span>Ward Notes (${commentCount})</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleUpvote(id) {
+            const issue = issues.find(i => i.id === id);
+            if (!issue) return;
+
+            if (issue.hasUpvoted) {
+                issue.upvotes--;
+                issue.hasUpvoted = false;
+                showToast("Removed support vote", "info");
+            } else {
+                issue.upvotes++;
+                issue.hasUpvoted = true;
+                addKarma(5);
+                showToast("Supported Ward Issue (+5 Karma)!", "success");
+            }
+
+            saveToLocalStorage();
+            updateStats();
+            renderIssues();
+        }
+
+        function toggleVolunteer(id) {
+            const issue = issues.find(i => i.id === id);
+            if (!issue) return;
+
+            if (issue.isVolunteered) {
+                issue.volunteers = Math.max(0, issue.volunteers - 1);
+                issue.isVolunteered = false;
+                showToast("Left volunteer team", "info");
+            } else {
+                issue.volunteers++;
+                issue.isVolunteered = true;
+                if (issue.status === 'Open') {
+                    issue.status = 'Community Action';
+                }
+                addKarma(15);
+                showToast("Joined Ward Volunteer Team (+15 Karma)!", "success");
+            }
+
+            saveToLocalStorage();
+            updateStats();
+            renderIssues();
+        }
+
+        function openDetailsModal(id) {
+            currentDetailIssueId = id;
+            const issue = issues.find(i => i.id === id);
+            if (!issue) return;
+
+            document.getElementById('details-modal-title').textContent = `Ward ${issue.ward} Issue Discussion`;
+            
+            document.getElementById('details-header-card').innerHTML = `
+                <div class="flex items-center justify-between text-xs text-slate-500">
+                    <span class="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">Ward Secretariat ${issue.ward}</span>
+                    <span class="font-bold text-slate-700">${issue.category} • ${issue.severity} Priority</span>
+                </div>
+                <h4 class="text-sm font-bold text-slate-900 mt-2">${issue.title}</h4>
+                <p class="text-xs text-slate-600 mt-1">${issue.description}</p>
+                <div class="mt-2 text-[11px] text-slate-400">Assigned: ${issue.officer || 'Ward Admin Officer'}</div>
+            `;
+
+            renderComments(issue);
+
+            const backdrop = document.getElementById('details-backdrop');
+            const container = document.getElementById('details-container');
+            backdrop.classList.remove('pointer-events-none', 'opacity-0');
+            backdrop.classList.add('opacity-100');
+            container.classList.remove('scale-95', 'opacity-0');
+            container.classList.add('scale-100', 'opacity-100');
+        }
+
+        function closeDetailsModal() {
+            const backdrop = document.getElementById('details-backdrop');
+            const container = document.getElementById('details-container');
+            container.classList.remove('scale-100', 'opacity-100');
+            container.classList.add('scale-95', 'opacity-0');
+            backdrop.classList.remove('opacity-100');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+            currentDetailIssueId = null;
+        }
+
+        function renderComments(issue) {
+            const comments = issue.comments || [];
+            document.getElementById('comment-count-badge').textContent = comments.length;
+            const list = document.getElementById('comments-list');
+
+            if (comments.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 italic py-3 text-center">No ward comments yet. Post an update!</p>`;
+                return;
+            }
+
+            list.innerHTML = comments.map(c => `
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-slate-800">${c.author}</span>
+                        <span class="text-[10px] text-slate-400">${c.time}</span>
+                    </div>
+                    <p class="text-xs text-slate-600">${c.text}</p>
+                </div>
+            `).join('');
+        }
+
+        function handleAddComment(e) {
+            e.preventDefault();
+            if (!currentDetailIssueId) return;
+
+            const input = document.getElementById('comment-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const issue = issues.find(i => i.id === currentDetailIssueId);
+            if (!issue) return;
+
+            if (!issue.comments) issue.comments = [];
+
+            issue.comments.push({
+                author: 'You (Gudem Resident)',
+                text: text,
+                time: 'Just now'
+            });
+
+            input.value = '';
+            addKarma(3);
+            saveToLocalStorage();
+            renderComments(issue);
+            renderIssues();
+            showToast("Comment added (+3 Karma)!", "success");
+        }
+
+        function openModal() {
+            const backdrop = document.getElementById('modal-backdrop');
+            const container = document.getElementById('modal-container');
+            backdrop.classList.remove('pointer-events-none', 'opacity-0');
+            backdrop.classList.add('opacity-100');
+            container.classList.remove('scale-95', 'opacity-0');
+            container.classList.add('scale-100', 'opacity-100');
+        }
+
+        function closeModal() {
+            const backdrop = document.getElementById('modal-backdrop');
+            const container = document.getElementById('modal-container');
+            container.classList.remove('scale-100', 'opacity-100');
+            container.classList.add('scale-95', 'opacity-0');
+            backdrop.classList.remove('opacity-100');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+
+            document.getElementById('report-form').reset();
+            currentImageData = null;
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('upload-prompt').classList.remove('hidden');
+        }
+
+        function openDirectoryModal() {
+            const backdrop = document.getElementById('directory-backdrop');
+            const container = document.getElementById('directory-container');
+            backdrop.classList.remove('pointer-events-none', 'opacity-0');
+            backdrop.classList.add('opacity-100');
+            container.classList.remove('scale-95', 'opacity-0');
+            container.classList.add('scale-100', 'opacity-100');
+        }
+
+        function closeDirectoryModal() {
+            const backdrop = document.getElementById('directory-backdrop');
+            const container = document.getElementById('directory-container');
+            container.classList.remove('scale-100', 'opacity-100');
+            container.classList.add('scale-95', 'opacity-0');
+            backdrop.classList.remove('opacity-100');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentImageData = e.target.result;
+                    const preview = document.getElementById('image-preview');
+                    preview.src = currentImageData;
+                    preview.classList.remove('hidden');
+                    document.getElementById('upload-prompt').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const ward = parseInt(document.getElementById('input-ward').value);
+            const title = document.getElementById('input-title').value.trim();
+            const category = document.getElementById('input-category').value;
+            const severity = document.getElementById('input-severity').value;
+            const location = document.getElementById('input-location').value.trim();
+            const description = document.getElementById('input-description').value.trim();
+
+            const newIssue = {
+                id: 'tpdg-' + Date.now(),
+                ward: ward,
+                secretariatId: `TPDG-SEC-${ward < 10 ? '0' + ward : ward}`,
+                officer: `Ward Admin Officer - Ward ${ward}`,
+                title: title,
+                category: category,
+                severity: severity,
+                location: location,
+                lat: 16.8150 + (Math.random() - 0.5) * 0.02,
+                lng: 81.5260 + (Math.random() - 0.5) * 0.02,
+                description: description,
+                status: 'Open',
+                upvotes: 1,
+                volunteers: 0,
+                hasUpvoted: true,
+                isVolunteered: false,
+                image: currentImageData || 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&q=80&w=600',
+                createdAt: new Date().toISOString(),
+                author: 'You (Gudem Citizen)',
+                comments: []
+            };
+
+            issues.unshift(newIssue);
+            addKarma(20);
+            saveToLocalStorage();
+            updateStats();
+            renderIssues();
+            closeModal();
+
+            showToast(`Report submitted to Ward ${ward} Secretariat (+20 Karma)!`, "success");
+        }
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.textContent = msg;
+            toastIcon.className = type === 'success' ? "fa-solid fa-circle-check text-emerald-400 text-lg" : "fa-solid fa-circle-info text-sky-400 text-lg";
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        window.onload = function() {
+            initApp();
+        };
+    </script>
+</body>
+</html>
